@@ -7,17 +7,23 @@
 using System;
 using System.Text;
 using System.Drawing;
+using System.ComponentModel;
 
 namespace MegOmegle
 {
     class SpyOmegleClient : OmegleClient
     {
         public SpyOmegleClient Partner { get; set; }
-        public SpyOmegleClient(string name, Color color, ConvoField console) : base(name, color, console) { }
+        public SpyOmegleClient(string name, Color color, ConvoField console, BindingList<string> likes = null) : base(name, color, console, likes) { }
 
         protected override void foundStranger()
         {
             console.sayConsole(getName() + " connected.\r\n");
+        }
+
+        protected override void commonLikes(string[] likes)
+        {
+            console.sayConsole("The stranger likes " + delimitLikes(likes) + ".");
         }
 
         protected override void strangerTyping(bool typing)

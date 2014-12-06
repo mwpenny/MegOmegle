@@ -36,6 +36,7 @@
             this.convoField = new MegOmegle.ConvoField();
             this.sendBtn = new MegOmegle.DropDownButton();
             this.stopBtn = new MegOmegle.DropDownButton();
+            this.interestsBtn = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // msgBox
@@ -48,7 +49,7 @@
             this.msgBox.Multiline = true;
             this.msgBox.Name = "msgBox";
             this.msgBox.Size = new System.Drawing.Size(298, 65);
-            this.msgBox.TabIndex = 2;
+            this.msgBox.TabIndex = 3;
             this.msgBox.TextChanged += new System.EventHandler(this.msgBox_TextChanged);
             this.msgBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.msgBox_KeyDown);
             // 
@@ -90,7 +91,7 @@
             this.sendBtn.Location = new System.Drawing.Point(392, 464);
             this.sendBtn.Name = "sendBtn";
             this.sendBtn.Size = new System.Drawing.Size(70, 65);
-            this.sendBtn.TabIndex = 3;
+            this.sendBtn.TabIndex = 4;
             this.sendBtn.UseVisualStyleBackColor = true;
             this.sendBtn.Click += new System.EventHandler(this.sendBtn_Click);
             // 
@@ -102,17 +103,28 @@
             this.stopBtn.ButtonText = "New";
             this.stopBtn.Location = new System.Drawing.Point(12, 464);
             this.stopBtn.Name = "stopBtn";
-            this.stopBtn.Size = new System.Drawing.Size(70, 65);
+            this.stopBtn.Size = new System.Drawing.Size(70, 32);
             this.stopBtn.TabIndex = 1;
             this.stopBtn.UseVisualStyleBackColor = true;
             this.stopBtn.Click += new System.EventHandler(this.stopBtn_Click);
             this.stopBtn.KeyDown += new System.Windows.Forms.KeyEventHandler(this.stopBtn_KeyDown);
+            // 
+            // interestsBtn
+            // 
+            this.interestsBtn.Location = new System.Drawing.Point(12, 497);
+            this.interestsBtn.Name = "interestsBtn";
+            this.interestsBtn.Size = new System.Drawing.Size(70, 32);
+            this.interestsBtn.TabIndex = 2;
+            this.interestsBtn.Text = "Interests";
+            this.interestsBtn.UseVisualStyleBackColor = true;
+            this.interestsBtn.Click += new System.EventHandler(this.interestsBtn_Click);
             // 
             // Main
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(473, 538);
+            this.Controls.Add(this.interestsBtn);
             this.Controls.Add(this.convoField);
             this.Controls.Add(this.sendBtn);
             this.Controls.Add(this.msgBox);
@@ -134,6 +146,7 @@
         private System.Windows.Forms.ContextMenuStrip sendBtnMenu;
         private DropDownButton stopBtn;
         private System.Windows.Forms.ContextMenuStrip stopBtnMenu;
+        private System.Windows.Forms.Button interestsBtn;
     }
 }
 

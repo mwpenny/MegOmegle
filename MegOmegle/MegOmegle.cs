@@ -8,6 +8,7 @@
 using System;
 using System.Drawing;
 using System.Windows.Forms;
+using System.ComponentModel;
 
 namespace MegOmegle
 {
@@ -23,20 +24,26 @@ namespace MegOmegle
         private SpyOmegleClient[] strangers;
         private bool spyMode;
 
+        private BindingList<string> likes;
+        private InterestEditor likeEditor;
+
         private void MegOmegle_Load(object sender, EventArgs e)
         {
+            likes = new BindingList<string>();
+            likeEditor = new InterestEditor(likes);
+
             Version version = new Version(Application.ProductVersion);
             string ver = version.Major + "." + version.Minor + version.MinorRevision;
             convoField.sayConsole("MegOmegle " + ver);
             convoField.sayConsole("Matthew Penny 2014");
             convoField.sayConsole(HTTPMethods.postData("http://omegle.com/count", "") + " online now.\r\n");
 
-            client = new OmegleClient("You", Color.Blue, convoField);
+            client = new OmegleClient("You", Color.Blue, convoField, likes);
 
             //Spy mode clients
             strangers = new SpyOmegleClient[2];
-            strangers[0] = new SpyOmegleClient("Stranger1", Color.Red, convoField);
-            strangers[1] = new SpyOmegleClient("Stranger2", Color.Green, convoField);
+            strangers[0] = new SpyOmegleClient("Stranger1", Color.Red, convoField, likes);
+            strangers[1] = new SpyOmegleClient("Stranger2", Color.Green, convoField, likes);
             strangers[0].Partner = strangers[1];
             strangers[1].Partner = strangers[0];
 
@@ -51,7 +58,7 @@ namespace MegOmegle
 
         private void connect(DropDownButton b)
         {
-            bool success = spyMode ? strangers[0].connect() && strangers[1].connect() : client.connect();
+           bool success = spyMode ? strangers[0].connect() && strangers[1].connect() : client.connect();
             
             //Connect
             if (success)
@@ -61,8 +68,6 @@ namespace MegOmegle
                 msgBox.Select();
                 convoField.clear();
                 msgBox.Clear();
-                strangers[0].send("Hi");
-                strangers[1].send("Hi");
             }
             else
                 disconnect(b);
@@ -85,6 +90,8 @@ namespace MegOmegle
             b.ArrowEnabled = true;
             b.ButtonText = "New";
             b.Font = new Font(b.Font, FontStyle.Regular);
+            b.Height /= 2;
+            interestsBtn.Visible = true;
             stopBtn.Select();
         }
 
@@ -108,7 +115,9 @@ namespace MegOmegle
                 spyMode = i == 1;
                 sendBtn.ArrowEnabled = spyMode;
                 b.ButtonText = "Stop";
+                b.Height *= 2;
                 b.ArrowEnabled = false;
+                interestsBtn.Visible = false;
                 connect(stopBtn);
             }
         }
@@ -191,8 +200,14 @@ namespace MegOmegle
             bool connected = spyMode ? strangers[0].isConnected() && strangers[1].isConnected() : client.isConnected();
 
             //Update buttons
-            if (!connected && !stopBtn.Text.Equals("New"))
+            if (!connected && !stopBtn.ButtonText.Equals("New"))
                 disconnect(stopBtn);
+        }
+
+        private void interestsBtn_Click(object sender, EventArgs e)
+        {
+            likeEditor.ShowDialog();
+            stopBtn.Select();
         }
     }
 }
