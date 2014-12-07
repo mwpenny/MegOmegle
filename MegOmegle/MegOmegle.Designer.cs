@@ -33,7 +33,7 @@
             this.sendBtnMenu = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.updateTimer = new System.Windows.Forms.Timer(this.components);
             this.stopBtnMenu = new System.Windows.Forms.ContextMenuStrip(this.components);
-            this.convoField = new MegOmegle.ConvoField();
+            this.convoField = new MegOmegle.ConvoField(this);
             this.sendBtn = new MegOmegle.DropDownButton();
             this.stopBtn = new MegOmegle.DropDownButton();
             this.interestsBtn = new System.Windows.Forms.Button();

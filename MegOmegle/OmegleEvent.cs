@@ -15,6 +15,10 @@ namespace MegOmegle
         public string oEvent;
         public string[] values;
 
+        /// <summary>
+        /// A key-values pair for an event returned by the server.
+        /// </summary>
+        /// <param name="raw">The raw JSON-ish string for the event.</param>
         public OmegleEvent(string raw)
         {
             if (!String.IsNullOrEmpty(raw))

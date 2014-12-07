@@ -46,6 +46,7 @@
             this.textField.Size = new System.Drawing.Size(150, 155);
             this.textField.TabIndex = 0;
             this.textField.Text = "";
+            this.textField.LinkClicked += new System.Windows.Forms.LinkClickedEventHandler(this.textField_LinkClicked);
             // 
             // statusStrip
             // 

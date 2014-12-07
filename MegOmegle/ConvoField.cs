@@ -13,11 +13,13 @@ namespace MegOmegle
 {
     public partial class ConvoField : UserControl
     {
+        private Form parentForm;
         public void setStatus(string text) { statusLabel.Text = text; }
         public string getStatus() { return statusLabel.Text; }
 
-        public ConvoField()
+        public ConvoField(Form parent)
         {
+            parentForm = parent;
             InitializeComponent();
         }
 
@@ -36,6 +38,10 @@ namespace MegOmegle
             //scroll to end
             textField.SelectionStart = textField.Text.Length;
             textField.ScrollToCaret();
+
+            //New text -> new message -> flash in taskbar
+            if (!parentForm.ContainsFocus)
+                WindowFlasher.flash(parentForm);
         }
 
         /// <summary>
@@ -62,11 +68,36 @@ namespace MegOmegle
         }
 
         /// <summary>
+        /// Inserts an image into the textfield.
+        /// </summary>
+        /// <param name="image">The image to insert.</param>
+        public void insertImage(Image image)
+        {
+            //Doing things the easy way
+            textField.ReadOnly = false;
+
+            //Save what was on the clipboard and restore it after the paste
+            IDataObject old = Clipboard.GetDataObject();
+            Clipboard.SetImage(image);
+            textField.Paste();
+            Clipboard.SetDataObject(old);
+
+            textField.ReadOnly = true;
+            textField.AppendText("\r\n");
+        }
+
+        /// <summary>
         /// Clears the conversation field.
         /// </summary>
         public void clear()
         {
             textField.Clear();
+        }
+
+        private void textField_LinkClicked(object sender, LinkClickedEventArgs e)
+        {
+            //Open URL
+            System.Diagnostics.Process.Start(e.LinkText);
         }
     }
 }

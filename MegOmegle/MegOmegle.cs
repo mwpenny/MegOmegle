@@ -6,6 +6,7 @@
  */
 
 using System;
+using System.Text;
 using System.Drawing;
 using System.Windows.Forms;
 using System.ComponentModel;
@@ -18,6 +19,18 @@ namespace MegOmegle
         {
             InitializeComponent();
             this.Icon = Properties.Resources.icon;
+
+            likes = new BindingList<string>();
+            likeEditor = new InterestEditor(likes);
+            
+            client = new OmegleClient("You", Color.Blue, convoField, likes);
+
+            //Init spy mode clients
+            strangers = new SpyOmegleClient[2];
+            strangers[0] = new SpyOmegleClient("Stranger1", Color.Red, convoField, likes);
+            strangers[1] = new SpyOmegleClient("Stranger2", Color.Green, convoField, likes);
+            strangers[0].Partner = strangers[1];
+            strangers[1].Partner = strangers[0];
         }
 
         private OmegleClient client;
@@ -29,23 +42,14 @@ namespace MegOmegle
 
         private void MegOmegle_Load(object sender, EventArgs e)
         {
-            likes = new BindingList<string>();
-            likeEditor = new InterestEditor(likes);
-
+            //Print header
             Version version = new Version(Application.ProductVersion);
             string ver = version.Major + "." + version.Minor + version.MinorRevision;
+            string users = Encoding.ASCII.GetString(HTTPMethods.postData("http://omegle.com/count", ""));
+
             convoField.sayConsole("MegOmegle " + ver);
             convoField.sayConsole("Matthew Penny 2014");
-            convoField.sayConsole(HTTPMethods.postData("http://omegle.com/count", "") + " online now.\r\n");
-
-            client = new OmegleClient("You", Color.Blue, convoField, likes);
-
-            //Spy mode clients
-            strangers = new SpyOmegleClient[2];
-            strangers[0] = new SpyOmegleClient("Stranger1", Color.Red, convoField, likes);
-            strangers[1] = new SpyOmegleClient("Stranger2", Color.Green, convoField, likes);
-            strangers[0].Partner = strangers[1];
-            strangers[1].Partner = strangers[0];
+            convoField.sayConsole(users + " online now.\r\n");
 
             //Set up button dropdown menus
             stopBtnMenu.Items.Add("Regular");
@@ -58,15 +62,16 @@ namespace MegOmegle
 
         private void connect(DropDownButton b)
         {
-           bool success = spyMode ? strangers[0].connect() && strangers[1].connect() : client.connect();
-            
-            //Connect
+            //Attempt to connect to Omegle
+            bool success = spyMode ? strangers[0].connect() && strangers[1].connect() : client.connect();
+
             if (success)
             {
+                //Enable everything need to chat
                 msgBox.Enabled = true;
                 sendBtn.ArrowEnabled = spyMode;
-                msgBox.Select();
                 convoField.clear();
+                msgBox.Select();
                 msgBox.Clear();
             }
             else
@@ -130,7 +135,6 @@ namespace MegOmegle
 
         private void sendBtn_Click(object sender, EventArgs e)
         {
-            //Send the message
             if (!String.IsNullOrEmpty(msgBox.Text))
             {
                 if (spyMode)
@@ -142,6 +146,11 @@ namespace MegOmegle
                         strangers[i].send(msgBox.Text);
                         convoField.sayUser(strangers[i].Partner.getName() + " (you)", strangers[i].Partner.getColor(), msgBox.Text);
                     }
+                }
+                else if (client.needsRecaptcha())
+                {
+                    //Send recaptcha response
+                    client.validateRecaptcha(msgBox.Text);
                 }
                 else
                 {
@@ -157,7 +166,7 @@ namespace MegOmegle
         {
             ContextMenuStrip menu = (ContextMenuStrip)sender;
 
-            //Check new item
+            //Only the clicked item can be checked
             foreach (ToolStripMenuItem item in menu.Items)
             {
                 if (item.Checked)
@@ -176,14 +185,12 @@ namespace MegOmegle
 
         private void msgBox_KeyDown(object sender, KeyEventArgs e)
         {
-            //Click send on enter press if shift isn't being held
             if (!e.Shift && e.KeyCode == Keys.Enter)
             {
                 sendBtn.PerformClick();
                 e.SuppressKeyPress = true;
             }
 
-            //Click the stop button when escape is pressed
             else if (e.KeyCode == Keys.Escape)
                 stopBtn.PerformClick();
 
@@ -194,18 +201,19 @@ namespace MegOmegle
                 stopBtn.ButtonText = "Stop";
             }
         }
-        
+
         private void updateTimer_Tick(object sender, EventArgs e)
         {
             bool connected = spyMode ? strangers[0].isConnected() && strangers[1].isConnected() : client.isConnected();
 
-            //Update buttons
+            //Update buttons on disconnect
             if (!connected && !stopBtn.ButtonText.Equals("New"))
                 disconnect(stopBtn);
         }
 
         private void interestsBtn_Click(object sender, EventArgs e)
         {
+            //Edit shared interests
             likeEditor.ShowDialog();
             stopBtn.Select();
         }

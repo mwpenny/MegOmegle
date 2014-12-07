@@ -5,23 +5,27 @@
  */
 
 using System;
+using System.Text;
 using System.Drawing;
 using System.Threading;
 using System.ComponentModel;
-using System.Text.RegularExpressions;
 
 namespace MegOmegle
 {
     public class OmegleClient
     {
         private string name, id;
+
         protected ConvoField console;
         private Color color;
         private Timer updateTimer;
+        private Recaptcha rcData;
+
+        protected bool supportsRecaptcha;
         protected bool connected;
-        protected bool typing;
 
         public bool isConnected() { return connected; }
+        public bool needsRecaptcha() { return (rcData != null); }
         public string getName() { return name; }
         public Color getColor() { return color; }
 
@@ -40,6 +44,8 @@ namespace MegOmegle
             this.color = color;
             this.console = console;
             this.likes = likes;
+            supportsRecaptcha = true;
+            rcData = null;
             updateTimer = new Timer(updateTimer_tick, null, Timeout.Infinite, 1000); //get events every second
         }
 
@@ -49,29 +55,34 @@ namespace MegOmegle
         /// <returns>Whether or not the connection was successful.</returns>
         public bool connect()
         {
-            //Attempt to join omegle
             if (connected)
                 disconnect();
             console.sayConsole("Connecting to server...");
+            string l = queryFormatLikes(likes);
+            //Attempt to join omegle
+            int rcs = supportsRecaptcha ? 1 : 0;
+            byte[] raw = HTTPMethods.getData("http://omegle.com/start" +
+                "?rcs=" + rcs +
+                "&topics=" + queryFormatLikes(likes));
+            string response = Encoding.ASCII.GetString(raw);
 
-            string response = HTTPMethods.postData("http://omegle.com/start?topics=" + queryFormatLikes(likes), "");
-
-            if (!response.Equals("null")) //omegle will return the string "null", rather than nothing
+            //Omegle will return the string "null", rather than nothing, if unsuccessful
+            if (!response.Equals("null"))
             {
                 id = response.Substring(1, response.Length - 2); //trim quotes
                 updateTimer.Change(0, 1000);
                 connected = true;
                 return true;
             }
-            return true;
+            return false;
         }
 
         private string queryFormatLikes(BindingList<string> likes)
         {
-            //Format likes for query string
             string likeString = "[";
             if (likes != null)
             {
+                //Comma delimit the likes
                 if (likes.Count > 0)
                     likeString += "\"" + likes[0] + "\"";
                 for (int i = 1; i < likes.Count; i++)
@@ -88,29 +99,48 @@ namespace MegOmegle
         /// <param name="message"></param>
         public void send(string message)
         {
-            //Stop typing
-            if (typing)
-            {
-                typing = false;
-                toggleTyping();
-            }
+            setTyping(false);
 
             //Send the message
-            HTTPMethods.postDataAsync("http://omegle.com/send", "id=" + id + "&msg=" + message, null);
+            HTTPMethods.postDataAsync("http://omegle.com/send",
+                "id=" + id +
+                "&msg=" + message,
+                null);
+        }
+
+        private void showRecaptcha(string key)
+        {
+            //Show a reCaptcha image using the provided key
+            console.clear();
+            rcData = new Recaptcha(key);
+            console.sayConsole("Please type the text you see in the image.");
+            console.insertImage(rcData.rcImage);
+        }
+
+        /// <summary>
+        /// Sends a reCaptcha response.
+        /// </summary>
+        /// <param name="response">The reCaptcha response.</param>
+        public void validateRecaptcha(string response)
+        {
+            HTTPMethods.postDataAsync("http://omegle.com/recaptcha",
+                "id=" + id +
+                "&challenge=" + rcData.challenge +
+                "&response=" + response,
+                parseEvents);
+            console.sayConsole("Verifying...");
         }
 
         /// <summary>
         /// Sets the typing state of the client.
         /// </summary>
         /// <param name="state">Whether or not this client is typing.</param>
-        public void setTyping(bool state)
+        public void setTyping(bool typing)
         {
-            //Only toggle typing if the new state is different
-            if (state != typing)
-            {
-                typing = state;
-                toggleTyping();
-            }
+            if (typing)
+                HTTPMethods.postDataAsync("http://omegle.com/typing", "id=" + id, null);
+            else
+                HTTPMethods.postDataAsync("http://omegle.com/stoppedtyping", "id=" + id, null);
         }
 
         /// <summary>
@@ -121,19 +151,10 @@ namespace MegOmegle
             if (connected)
             {
                 connected = false;
-                typing = false;
                 HTTPMethods.postDataAsync("http://omegle.com/disconnect", "id=" + id, null);
                 strangerTyping(false);
                 console.sayConsole(name + " disconnected.");
             }
-        }
-
-        private void toggleTyping()
-        {
-            if (typing)
-                HTTPMethods.postDataAsync("http://omegle.com/typing", "id=" + id, null);
-            else
-                HTTPMethods.postDataAsync("http://omegle.com/stoppedtyping", "id=" + id, null);
         }
 
         private void updateTimer_tick(object o)
@@ -154,15 +175,21 @@ namespace MegOmegle
             }
         }
 
-        private void parseEvents(string response)
+        private void parseEvents(byte[] response)
         {
-            if (response != "null")
+            string raw = Encoding.ASCII.GetString(response);
+
+            if (raw != "null")
             {
                 //Handle events
-                foreach (OmegleEvent e in OmegleEvent.eventsFromJSON(response))
+                foreach (OmegleEvent e in OmegleEvent.eventsFromJSON(raw))
                 {
                     if (e.oEvent.Equals("waiting"))
+                    {
+                        rcData = null;
+                        console.clear();
                         console.sayConsole("Looking for someone you can chat with...");
+                    }
                     else if (e.oEvent.Equals("connected"))
                         foundStranger();
                     else if (e.oEvent.Equals("commonLikes"))
@@ -175,8 +202,8 @@ namespace MegOmegle
                         gotMessage(e.values[0]);
                     else if (e.oEvent.Equals("strangerDisconnected"))
                         strangerDisconnected();
-                    else if (e.oEvent.Equals("recaptchaRequired"))
-                        console.sayConsole("Oh no! reCaptcha (not implemented)!");
+                    else if (e.oEvent.Equals("recaptchaRequired") || e.oEvent.Equals("recaptchaRejected"))
+                        showRecaptcha(e.values[0]);
                     else if (e.oEvent.Equals("error"))
                     {
                         console.sayConsole("Oh no! There was an error!");
