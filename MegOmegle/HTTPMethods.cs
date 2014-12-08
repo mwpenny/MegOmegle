@@ -21,13 +21,25 @@ namespace MegOmegle
 
             //Get each key/value pair from the raw string
             if (raw.Contains("="))
+            {
                 foreach (string pair in raw.Split('&'))
                 {
                     string[] splitPair = pair.Split('=');
                     values[splitPair[0]] = splitPair[1];
                 }
+            }
 
             return values;
+        }
+
+        /// <summary>
+        /// Converts a raw response into an ASCII string.
+        /// </summary>
+        /// <param name="raw">The raw server response.</param>
+        /// <returns>The response in ASCII, or "null" if the response was null.</returns>
+        public static string getASCII(byte[] raw)
+        {
+            return raw != null ? Encoding.ASCII.GetString(raw) : "null";
         }
 
         /// <summary>
@@ -37,10 +49,13 @@ namespace MegOmegle
         /// <returns>The resource specified by the URL.</returns>
         public static byte[] getData(string url)
         {
-            using (WebClient w = new WebClient())
-            {                
-                return w.DownloadData(url);
+            //Attempt to get the data
+            try
+            {
+                using (WebClient w = new WebClient())
+                    return w.DownloadData(url);
             }
+            catch { return null; }
         }
 
         /// <summary>
@@ -55,11 +70,12 @@ namespace MegOmegle
                 //Sets up the event handler
                 w.DownloadDataCompleted += delegate(object sender, DownloadDataCompletedEventArgs e)
                 {
-                    try { callback(e.Result); }
-                    catch { }; //Because of the server closing the connection and null callbacks
+                    if (e.Error == null && callback != null)
+                        callback(e.Result);
                 };
-                
-                w.DownloadDataAsync(new Uri(url));
+
+                try { w.DownloadDataAsync(new Uri(url)); }
+                catch { callback(null); }
             }
         }
 
@@ -93,8 +109,8 @@ namespace MegOmegle
                 //Sets up the event handler
                 w.UploadValuesCompleted += delegate(object sender, UploadValuesCompletedEventArgs e)
                 {
-                    try { callback(e.Result); }
-                    catch { }; //Because of the server closing the connection and null callbacks
+                    if (e.Error == null && callback != null)
+                        callback(e.Result);
                 };
 
                 w.UploadValuesAsync(new Uri(url), getKVPs(data));

@@ -33,10 +33,11 @@ namespace MegOmegle
         protected override void strangerTyping(bool typing)
         {
             if (typing)
-                //Relay typing state to partner
-                console.setStatus(getName() + " is typing...");
+                console.Status = getName() + " is typing...";
             else
-                console.setStatus("");
+                console.Status = "";
+
+            //Relay typing state to partner
             Partner.setTyping(typing);
         }
 
@@ -53,7 +54,7 @@ namespace MegOmegle
             //Disconnect from partner as well
             strangerTyping(false);
             connected = false;
-            console.sayConsole(getName() + " disconnected.");
+            console.sayConsole("\r\n" + getName() + " disconnected.");
             Partner.disconnect();
         }
     }

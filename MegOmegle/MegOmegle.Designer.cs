@@ -111,6 +111,7 @@
             // 
             // interestsBtn
             // 
+            this.interestsBtn.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.interestsBtn.Location = new System.Drawing.Point(12, 497);
             this.interestsBtn.Name = "interestsBtn";
             this.interestsBtn.Size = new System.Drawing.Size(70, 32);

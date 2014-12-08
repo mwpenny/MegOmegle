@@ -13,14 +13,17 @@ namespace MegOmegle
 {
     public partial class ConvoField : UserControl
     {
-        private Form parentForm;
-        public void setStatus(string text) { statusLabel.Text = text; }
-        public string getStatus() { return statusLabel.Text; }
+        private Form parent;
+        public string Status
+        {
+            get { return statusLabel.Text; }
+            set { statusLabel.Text = value; }
+        }
 
         public ConvoField(Form parent)
         {
-            parentForm = parent;
             InitializeComponent();
+            this.parent = parent;
         }
 
         private void AppendText(Color color, FontStyle style, string text)
@@ -40,22 +43,22 @@ namespace MegOmegle
             textField.ScrollToCaret();
 
             //New text -> new message -> flash in taskbar
-            if (!parentForm.ContainsFocus)
-                WindowFlasher.flash(parentForm);
+            if (!parent.ContainsFocus)
+                WindowFlasher.flash(parent);
         }
 
         /// <summary>
-        /// Say something as the console.
+        /// Says something as the console.
         /// </summary>
-        /// <param name="info"></param>
-        public void sayConsole(string info)
+        /// <param name="info">The text to print.</param>
+        public void sayConsole(string text)
         {
             //Append grey text
-            AppendText(Color.FromArgb(85, 85, 85), FontStyle.Bold, info + "\r\n");
+            AppendText(Color.FromArgb(85, 85, 85), FontStyle.Bold, text + "\r\n");
         }
 
         /// <summary>
-        /// Say something as a user.
+        /// Says something as a user.
         /// </summary>
         /// <param name="name">The user's name.</param>
         /// <param name="color">The user's color.</param>
@@ -73,16 +76,21 @@ namespace MegOmegle
         /// <param name="image">The image to insert.</param>
         public void insertImage(Image image)
         {
-            //Doing things the easy way
-            textField.ReadOnly = false;
+            if (image != null)
+            {
+                //Doing things the easy way
+                textField.ReadOnly = false;
 
-            //Save what was on the clipboard and restore it after the paste
-            IDataObject old = Clipboard.GetDataObject();
-            Clipboard.SetImage(image);
-            textField.Paste();
-            Clipboard.SetDataObject(old);
+                //Save what was on the clipboard and restore it after the paste
+                object old = Clipboard.GetDataObject();
+                Clipboard.SetImage(image);
+                textField.Paste();
+                Clipboard.SetDataObject(old);
 
-            textField.ReadOnly = true;
+                textField.ReadOnly = true;
+            }
+            else
+                sayConsole("[Invalid image]");
             textField.AppendText("\r\n");
         }
 

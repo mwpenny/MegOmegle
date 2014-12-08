@@ -5,7 +5,6 @@
  */
 
 using System;
-using System.Text;
 using System.Drawing;
 using System.IO;
 using System.Text.RegularExpressions;
@@ -35,9 +34,9 @@ namespace MegOmegle
         public static string getChallenge(string key)
         {
             //Use key with reCaptcha api, and parse the result for the challenge id
-            byte[] response = HTTPMethods.getData("http://google.com/recaptcha/api/challenge?k=" + key);
-            string raw = Encoding.ASCII.GetString(response);
-            Match element = Regex.Match(raw, "challenge : \'(.*?)\'"); //Literally magic
+            byte[] raw = HTTPMethods.getData("http://google.com/recaptcha/api/challenge?k=" + key);
+            string response = HTTPMethods.getASCII(raw);
+            Match element = Regex.Match(response, "challenge : \'(.*?)\'"); //Literally magic
             return element.Groups[1].ToString();
         }
 
@@ -50,12 +49,15 @@ namespace MegOmegle
         {
             //Use the challange value to get the captcha image
             string url = "http://google.com/recaptcha/api/image?c=" + challenge;
-            Image i;
 
-            using (MemoryStream imgStream = new MemoryStream(HTTPMethods.getData(url)))
-                i = Image.FromStream(imgStream);
-
-            return i;
+            try
+            {
+                Image i;
+                using (MemoryStream imgStream = new MemoryStream(HTTPMethods.getData(url)))
+                    i = Image.FromStream(imgStream);
+                return i;
+            }
+            catch { return null; }
         }
     }
 }

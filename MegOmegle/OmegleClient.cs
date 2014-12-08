@@ -5,7 +5,6 @@
  */
 
 using System;
-using System.Text;
 using System.Drawing;
 using System.Threading;
 using System.ComponentModel;
@@ -52,19 +51,19 @@ namespace MegOmegle
         /// <summary>
         /// Attempts to connect to someone on Omegle.
         /// </summary>
+        /// <param name="monitored">Whether or not to join monitored mode.</param>
         /// <returns>Whether or not the connection was successful.</returns>
-        public bool connect()
+        public bool connect(bool monitored=true)
         {
             if (connected)
                 disconnect();
-            console.sayConsole("Connecting to server...");
-            string l = queryFormatLikes(likes);
+            
             //Attempt to join omegle
-            int rcs = supportsRecaptcha ? 1 : 0;
-            byte[] raw = HTTPMethods.getData("http://omegle.com/start" +
-                "?rcs=" + rcs +
-                "&topics=" + queryFormatLikes(likes));
-            string response = Encoding.ASCII.GetString(raw);
+            byte[] raw = HTTPMethods.getData("http://omegle.com/start?" +
+                (supportsRecaptcha ? "rcs=1" : "") +
+                (!monitored ? "&group=unmon" : "") +
+                (monitored ? "&topics=" + queryFormatLikes(likes) : "")); //Can only share interests when monitored
+            string response = HTTPMethods.getASCII(raw);
 
             //Omegle will return the string "null", rather than nothing, if unsuccessful
             if (!response.Equals("null"))
@@ -153,10 +152,11 @@ namespace MegOmegle
                 connected = false;
                 HTTPMethods.postDataAsync("http://omegle.com/disconnect", "id=" + id, null);
                 strangerTyping(false);
-                console.sayConsole(name + " disconnected.");
+                console.sayConsole("\r\n" + name + " disconnected.");
             }
         }
 
+        //private void updateTimer_tick(object sender, EventArgs e)
         private void updateTimer_tick(object o)
         {
             //Stop the timer when disconnected
@@ -166,32 +166,39 @@ namespace MegOmegle
                 return;
             }
 
-            //Prevent an exception for cross-thread operations (modifying the chat view)
             if (console.InvokeRequired)
-                console.Invoke((System.Windows.Forms.MethodInvoker)delegate { HTTPMethods.postDataAsync("http://omegle.com/events", "id=" + id, parseEvents); });
+            {
+                console.BeginInvoke((System.Windows.Forms.MethodInvoker)delegate()
+                {
+                    HTTPMethods.postDataAsync("http://omegle.com/events", "id=" + id, parseEvents);
+                });
+            }
             else
             {
                 HTTPMethods.postDataAsync("http://omegle.com/events", "id=" + id, parseEvents);
             }
         }
 
-        private void parseEvents(byte[] response)
+        private void parseEvents(byte[] raw)
         {
-            string raw = Encoding.ASCII.GetString(response);
+            string response = HTTPMethods.getASCII(raw);
 
-            if (raw != "null")
+            if (!response.Equals("null"))
             {
                 //Handle events
-                foreach (OmegleEvent e in OmegleEvent.eventsFromJSON(raw))
+                foreach (OmegleEvent e in OmegleEvent.eventsFromJSON(response))
                 {
                     if (e.oEvent.Equals("waiting"))
                     {
-                        rcData = null;
                         console.clear();
+                        rcData = null;
                         console.sayConsole("Looking for someone you can chat with...");
                     }
                     else if (e.oEvent.Equals("connected"))
+                    {
+                        console.clear();
                         foundStranger();
+                    }
                     else if (e.oEvent.Equals("commonLikes"))
                         commonLikes(e.values);
                     else if (e.oEvent.Equals("typing"))
@@ -213,6 +220,11 @@ namespace MegOmegle
                     else if (e.oEvent.Equals("connectionDied"))
                     {
                         console.sayConsole("Connection died!");
+                        disconnect();
+                    }
+                    else if (e.oEvent.Equals("antinudeBanned"))
+                    {
+                        console.sayConsole("Banned for bad behavior! Use unmonitored mode.");
                         disconnect();
                     }
                 }
@@ -240,15 +252,15 @@ namespace MegOmegle
 
         protected virtual void commonLikes(string[] likes)
         {
-            console.sayConsole("You both like " + delimitLikes(likes) + ".");
+            console.sayConsole("You both like " + delimitLikes(likes) + ".\r\n");
         }
 
         protected virtual void strangerTyping(bool typing)
         {
             if (typing)
-                console.setStatus("Stranger is typing...");
+                console.Status = "Stranger is typing...";
             else
-                console.setStatus("");
+                console.Status = "";
         }
 
         protected virtual void gotMessage(string message)
@@ -261,7 +273,7 @@ namespace MegOmegle
         {
             strangerTyping(false);
             connected = false;
-            console.sayConsole("Stranger disconnected.");
+            console.sayConsole("\r\nStranger disconnected.");
         }
     }
 }

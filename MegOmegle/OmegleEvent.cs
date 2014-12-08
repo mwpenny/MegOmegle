@@ -19,12 +19,12 @@ namespace MegOmegle
         /// A key-values pair for an event returned by the server.
         /// </summary>
         /// <param name="raw">The raw JSON-ish string for the event.</param>
-        public OmegleEvent(string raw)
+        public OmegleEvent(string json)
         {
-            if (!String.IsNullOrEmpty(raw))
+            if (!String.IsNullOrEmpty(json))
             {
                 //Get event data
-                MatchCollection elements = Regex.Matches(raw, "\"(.*?)\""); //Now I have 2 problems
+                MatchCollection elements = Regex.Matches(json, "\"(.*?)\""); //Now I have 2 problems
                 oEvent = elements[0].Groups[1].Value;
 
                 //Get event values/arguments/whatever
@@ -52,6 +52,7 @@ namespace MegOmegle
             json = json.Substring(1, json.Length - 2); //trim the []
             foreach (Match m in Regex.Matches(json, "\\[(.*?)\\]")) //Everybody stand back!
                 events.Add(new OmegleEvent(m.Groups[1].Value));
+
             return events;
         }
     }

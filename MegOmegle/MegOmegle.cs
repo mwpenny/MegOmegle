@@ -15,6 +15,23 @@ namespace MegOmegle
 {
     public partial class Main : Form
     {
+        enum ConvoMode
+        {
+            REG,
+            UNMON,
+            SPY,
+            UNMONSPY
+        };
+
+        private int maxStopHeight, minStopHeight;
+        private ConvoMode mode;
+
+        private OmegleClient client;
+        private SpyOmegleClient[] strangers;
+
+        private BindingList<string> likes;
+        private InterestEditor likeEditor;
+
         public Main()
         {
             InitializeComponent();
@@ -33,27 +50,26 @@ namespace MegOmegle
             strangers[1].Partner = strangers[0];
         }
 
-        private OmegleClient client;
-        private SpyOmegleClient[] strangers;
-        private bool spyMode;
-
-        private BindingList<string> likes;
-        private InterestEditor likeEditor;
-
         private void MegOmegle_Load(object sender, EventArgs e)
         {
+            minStopHeight = stopBtn.Height;
+            maxStopHeight = stopBtn.Height * 2;
+
             //Print header
             Version version = new Version(Application.ProductVersion);
             string ver = version.Major + "." + version.Minor + version.MinorRevision;
-            string users = Encoding.ASCII.GetString(HTTPMethods.postData("http://omegle.com/count", ""));
+            string users = HTTPMethods.getASCII(HTTPMethods.postData("http://omegle.com/count", ""));
+            if (users.Equals("null")) users = "0"; //In case the server could not be reached
 
             convoField.sayConsole("MegOmegle " + ver);
             convoField.sayConsole("Matthew Penny 2014");
-            convoField.sayConsole(users + " online now.\r\n");
+            convoField.sayConsole(users + " online now.");
 
             //Set up button dropdown menus
             stopBtnMenu.Items.Add("Regular");
+            stopBtnMenu.Items.Add("Unmonitored");
             stopBtnMenu.Items.Add("Spy mode");
+            stopBtnMenu.Items.Add("Unmonitored spy mode");
             ((ToolStripMenuItem)stopBtnMenu.Items[0]).Checked = true;
             sendBtnMenu.Items.Add("as " + strangers[0].Partner.getName());
             sendBtnMenu.Items.Add("as " + strangers[1].Partner.getName());
@@ -62,26 +78,43 @@ namespace MegOmegle
 
         private void connect(DropDownButton b)
         {
-            //Attempt to connect to Omegle
-            bool success = spyMode ? strangers[0].connect() && strangers[1].connect() : client.connect();
+            convoField.clear();
+            convoField.sayConsole("Connecting to server...");
+            Application.DoEvents();
+
+            bool monMode = (mode != ConvoMode.UNMON && mode != ConvoMode.UNMONSPY);
+            bool spyMode = (mode == ConvoMode.SPY || mode == ConvoMode.UNMONSPY);
+
+            //Attempt to connect to Omegle (blocking)
+            bool success;
+            if (spyMode)
+                success = strangers[0].connect(monMode) && strangers[1].connect(monMode);
+            else
+                success = client.connect(monMode);
+            convoField.clear();
 
             if (success)
             {
-                //Enable everything need to chat
+                //Enable everything need to chat, as necessary
+                b.ButtonText = "Stop";
+                b.Height = maxStopHeight;
+                b.ArrowEnabled = false;
+                interestsBtn.Visible = false;
                 msgBox.Enabled = true;
-                sendBtn.ArrowEnabled = spyMode;
-                convoField.clear();
                 msgBox.Select();
                 msgBox.Clear();
             }
             else
+            {
+                convoField.sayConsole("Could not connect to server.");
                 disconnect(b);
+            }
         }
 
         private void disconnect(DropDownButton b)
         {
             //Disconnect
-            if (spyMode)
+            if (mode == ConvoMode.SPY)
             {
                 strangers[0].disconnect();
                 strangers[1].disconnect();
@@ -89,20 +122,21 @@ namespace MegOmegle
             else
                 client.disconnect();
 
-            //Reset buttons/fields
+            //Reset buttons/fields as necessary
             sendBtn.Enabled = false;
             msgBox.Enabled = false;
             b.ArrowEnabled = true;
+            interestsBtn.Visible = (mode != ConvoMode.UNMON && mode != ConvoMode.UNMONSPY);
             b.ButtonText = "New";
             b.Font = new Font(b.Font, FontStyle.Regular);
-            b.Height /= 2;
-            interestsBtn.Visible = true;
-            stopBtn.Select();
+            b.Height = minStopHeight;
+            b.Select();
         }
 
         private void stopBtn_Click(object sender, EventArgs e)
         {
             DropDownButton b = (DropDownButton)sender;
+            b.ButtonMenu.Hide();
 
             if (b.ButtonText.Equals("Stop"))
             {
@@ -114,17 +148,7 @@ namespace MegOmegle
                 disconnect(b);
 
             else if (b.ButtonText.Equals("New"))
-            {
-                //Set up buttons/fields depending on mode
-                int i = stopBtn.getCheckedIndex();
-                spyMode = i == 1;
-                sendBtn.ArrowEnabled = spyMode;
-                b.ButtonText = "Stop";
-                b.Height *= 2;
-                b.ArrowEnabled = false;
-                interestsBtn.Visible = false;
-                connect(stopBtn);
-            }
+                connect(b);
         }
 
         private void stopBtn_KeyDown(object sender, KeyEventArgs e)
@@ -135,12 +159,15 @@ namespace MegOmegle
 
         private void sendBtn_Click(object sender, EventArgs e)
         {
+            DropDownButton b = (DropDownButton)sender;
+            b.ButtonMenu.Hide();
+
             if (!String.IsNullOrEmpty(msgBox.Text))
             {
-                if (spyMode)
+                if (mode == ConvoMode.SPY || mode == ConvoMode.UNMONSPY)
                 {
                     //Get stranger to spoof and send message
-                    int i = sendBtn.getCheckedIndex();
+                    int i = b.getCheckedIndex();
                     if (i >= 0)
                     {
                         strangers[i].send(msgBox.Text);
@@ -166,13 +193,22 @@ namespace MegOmegle
         {
             ContextMenuStrip menu = (ContextMenuStrip)sender;
 
-            //Only the clicked item can be checked
+            //Only the clicked should be checked
             foreach (ToolStripMenuItem item in menu.Items)
             {
                 if (item.Checked)
                     item.Checked = false;
             }
             ((ToolStripMenuItem)e.ClickedItem).Checked = true;
+            mode = (ConvoMode)stopBtn.getCheckedIndex();
+
+            //Update buttons based on the new mode
+            bool monMode = (mode != ConvoMode.UNMON && mode != ConvoMode.UNMONSPY);
+            bool spyMode = (mode == ConvoMode.SPY || mode == ConvoMode.UNMONSPY);
+            sendBtn.ArrowEnabled = spyMode;
+            sendBtn.ArrowEnabled = spyMode;
+            stopBtn.Height = minStopHeight = (monMode ? maxStopHeight / 2 : maxStopHeight);
+            interestsBtn.Visible = monMode;
         }
 
         private void msgBox_TextChanged(object sender, EventArgs e)
@@ -204,9 +240,13 @@ namespace MegOmegle
 
         private void updateTimer_Tick(object sender, EventArgs e)
         {
-            bool connected = spyMode ? strangers[0].isConnected() && strangers[1].isConnected() : client.isConnected();
+            bool connected;
+            if (mode == ConvoMode.SPY)
+                connected = strangers[0].isConnected() && strangers[1].isConnected();
+            else
+                connected = client.isConnected();
 
-            //Update buttons on disconnect
+            //Update UI on disconnect
             if (!connected && !stopBtn.ButtonText.Equals("New"))
                 disconnect(stopBtn);
         }

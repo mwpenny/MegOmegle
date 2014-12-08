@@ -17,6 +17,7 @@ namespace MegOmegle
         private const int LINE_PADDING = 7;
         private string btnText;
         private bool arrowEnabled;
+        private Rectangle arrowBox;
 
         //Store text this way to custom align it later
         public string ButtonText
@@ -43,20 +44,27 @@ namespace MegOmegle
             }
         }
 
-        private Rectangle getArrowBox()
+        protected override void OnEnabledChanged(EventArgs e)
         {
-            //Rectangle bounding dropdown part of button
-            return new Rectangle(ClientRectangle.Width - ARROW_WIDTH - 2 * LINE_PADDING, 0,
-                                 ARROW_WIDTH + 2 * LINE_PADDING - 1, ClientRectangle.Height - 1);            
+            base.OnEnabledChanged(e);
+        }
+
+        protected override void OnResize(EventArgs e)
+        {
+            base.OnResize(e);
+
+            //Get bounds for arrow
+            arrowBox = new Rectangle(ClientRectangle.Width - ARROW_WIDTH - 2 * LINE_PADDING, 0,
+                                 ARROW_WIDTH + 2 * LINE_PADDING - 1, ClientRectangle.Height - 1);
         }
 
         protected override void OnMouseDown(MouseEventArgs e)
         {
-            base.OnMouseDown(e);
-
             //Open context menu if arrow clicked
-            if (ButtonMenu != null && e.Button == MouseButtons.Left && arrowEnabled && getArrowBox().Contains(e.Location))
+            if (ButtonMenu != null && e.Button == MouseButtons.Left && arrowEnabled && arrowBox.Contains(e.Location))
                 ButtonMenu.Show(this, e.Location);
+            else
+                base.OnMouseDown(e);
         }
 
         protected override void OnPaint(PaintEventArgs e)
@@ -69,10 +77,7 @@ namespace MegOmegle
             //Draw arrow if context menu
             if (arrowEnabled)
             {
-                Rectangle arrowBox = getArrowBox();
-
-                //Align text in non-arrow part of button
-                
+                //Align text in non-arrow part of button                
                 PointF location = new PointF(arrowBox.X / 2 - size.Width / 2 + 2, arrowBox.Height / 2 - size.Height / 2 + 1);
                 e.Graphics.DrawString(btnText, base.Font, b, location);
 
