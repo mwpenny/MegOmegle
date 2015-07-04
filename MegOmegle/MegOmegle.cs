@@ -57,7 +57,7 @@ namespace MegOmegle
 
             //Print header
             Version version = new Version(Application.ProductVersion);
-            string ver = version.Major + "." + version.Minor + version.MinorRevision;
+            string ver = version.Major + "." + version.Minor + version.Build;
             string users = HTTPMethods.getASCII(HTTPMethods.postData("http://omegle.com/count", ""));
             if (users.Equals("null")) users = "0"; //In case the server could not be reached
 

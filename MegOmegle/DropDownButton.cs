@@ -44,11 +44,6 @@ namespace MegOmegle
             }
         }
 
-        protected override void OnEnabledChanged(EventArgs e)
-        {
-            base.OnEnabledChanged(e);
-        }
-
         protected override void OnResize(EventArgs e)
         {
             base.OnResize(e);
